@@ -19,18 +19,18 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING,
 		MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_PAUSED,
 		MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED,
-		MAIN_REGION_SAVE,
-		MAIN_REGION_SAVE_SAVE_TIME_SAVED,
-		MAIN_REGION_SAVE_SAVE_SAVER_RESET,
+		SAVING_TIME_SAVE,
+		SAVING_TIME_SAVE_SAVE_TIME_SAVED,
+		SAVING_TIME_SAVE_SAVE_SAVER_RESET,
 		$NULLSTATE$
 	};
 	
 	private State[] historyVector = new State[3];
-	private final State[] stateVector = new State[1];
+	private final State[] stateVector = new State[2];
 	
 	private ITimerService timerService;
 	
-	private final boolean[] timeEvents = new boolean[4];
+	private final boolean[] timeEvents = new boolean[5];
 	
 	private BlockingQueue<Runnable> inEventQueue = new LinkedBlockingQueue<Runnable>();
 	private boolean isExecuting;
@@ -46,8 +46,21 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			this.isExecuting = value;
 		}
 	}
+	private long stateConfVectorPosition;
+	
+	protected long getStateConfVectorPosition() {
+		synchronized(StopWatchStateMachine.this) {
+			return stateConfVectorPosition;
+		}
+	}
+	
+	protected void setStateConfVectorPosition(long value) {
+		synchronized(StopWatchStateMachine.this) {
+			this.stateConfVectorPosition = value;
+		}
+	}
 	public StopWatchStateMachine() {
-		for (int i = 0; i < 1; i++) {
+		for (int i = 0; i < 2; i++) {
 			stateVector[i] = State.$NULLSTATE$;
 		}
 		for (int i = 0; i < 3; i++) {
@@ -72,6 +85,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		isExecuting = true;
 		
 		enterSequence_main_Region_default();
+		enterSequence_saving_time_default();
 		isExecuting = false;
 	}
 	
@@ -82,6 +96,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		isExecuting = true;
 		
 		exitSequence_main_Region();
+		exitSequence_saving_time();
 		isExecuting = false;
 	}
 	
@@ -89,7 +104,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	 * @see IStatemachine#isActive()
 	 */
 	public synchronized boolean isActive() {
-		return stateVector[0] != State.$NULLSTATE$;
+		return stateVector[0] != State.$NULLSTATE$||stateVector[1] != State.$NULLSTATE$;
 	}
 	
 	/** 
@@ -109,36 +124,48 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		timeEvents[1] = false;
 		timeEvents[2] = false;
 		timeEvents[3] = false;
+		timeEvents[4] = false;
 	}
 	
 	private void microStep() {
+		long transitioned = -1;
+		
+		stateConfVectorPosition = 0;
+		
 		switch (stateVector[0]) {
 		case MAIN_REGION_MODE_MODE_HOUR_PRINTED:
-			main_Region_mode_mode_hour_printed_react(-1);
+			transitioned = main_Region_mode_mode_hour_printed_react(transitioned);
 			break;
 		case MAIN_REGION_MODE_MODE_DATE_PRINTED:
-			main_Region_mode_mode_date_printed_react(-1);
+			transitioned = main_Region_mode_mode_date_printed_react(transitioned);
 			break;
 		case MAIN_REGION_STOPWATCH_R1_INITIAL_STATE:
-			main_Region_stopwatch_r1_Initial_state_react(-1);
+			transitioned = main_Region_stopwatch_r1_Initial_state_react(transitioned);
 			break;
 		case MAIN_REGION_STOPWATCH_R1_STOPPED:
-			main_Region_stopwatch_r1_stopped_react(-1);
+			transitioned = main_Region_stopwatch_r1_stopped_react(transitioned);
 			break;
 		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_PAUSED:
-			main_Region_stopwatch_r1_Time_is_running_running_time_paused_react(-1);
+			transitioned = main_Region_stopwatch_r1_Time_is_running_running_time_paused_react(transitioned);
 			break;
 		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED:
-			main_Region_stopwatch_r1_Time_is_running_running_time_started_react(-1);
-			break;
-		case MAIN_REGION_SAVE_SAVE_TIME_SAVED:
-			main_Region_save_save_time_saved_react(-1);
-			break;
-		case MAIN_REGION_SAVE_SAVE_SAVER_RESET:
-			main_Region_save_save_saver_reset_react(-1);
+			transitioned = main_Region_stopwatch_r1_Time_is_running_running_time_started_react(transitioned);
 			break;
 		default:
 			break;
+		}
+		
+		if (getStateConfVectorPosition()<1) {
+			switch (stateVector[1]) {
+			case SAVING_TIME_SAVE_SAVE_TIME_SAVED:
+				transitioned = saving_time_save_save_time_saved_react(transitioned);
+				break;
+			case SAVING_TIME_SAVE_SAVE_SAVER_RESET:
+				transitioned = saving_time_save_save_saver_reset_react(transitioned);
+				break;
+			default:
+				break;
+			}
 		}
 	}
 	
@@ -160,7 +187,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			clearInEvents();
 			
 			nextEvent();
-		} while ((((((((leftButton || rigthButton) || modeButton) || saveButton) || timeEvents[0]) || timeEvents[1]) || timeEvents[2]) || timeEvents[3]));
+		} while (((((((((leftButton || rigthButton) || modeButton) || saveButton) || timeEvents[0]) || timeEvents[1]) || timeEvents[2]) || timeEvents[3]) || timeEvents[4]));
 		
 		isExecuting = false;
 	}
@@ -198,13 +225,13 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			return stateVector[0] == State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_PAUSED;
 		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED:
 			return stateVector[0] == State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED;
-		case MAIN_REGION_SAVE:
-			return stateVector[0].ordinal() >= State.
-					MAIN_REGION_SAVE.ordinal()&& stateVector[0].ordinal() <= State.MAIN_REGION_SAVE_SAVE_SAVER_RESET.ordinal();
-		case MAIN_REGION_SAVE_SAVE_TIME_SAVED:
-			return stateVector[0] == State.MAIN_REGION_SAVE_SAVE_TIME_SAVED;
-		case MAIN_REGION_SAVE_SAVE_SAVER_RESET:
-			return stateVector[0] == State.MAIN_REGION_SAVE_SAVE_SAVER_RESET;
+		case SAVING_TIME_SAVE:
+			return stateVector[1].ordinal() >= State.
+					SAVING_TIME_SAVE.ordinal()&& stateVector[1].ordinal() <= State.SAVING_TIME_SAVE_SAVE_SAVER_RESET.ordinal();
+		case SAVING_TIME_SAVE_SAVE_TIME_SAVED:
+			return stateVector[1] == State.SAVING_TIME_SAVE_SAVE_TIME_SAVED;
+		case SAVING_TIME_SAVE_SAVE_SAVER_RESET:
+			return stateVector[1] == State.SAVING_TIME_SAVE_SAVE_SAVER_RESET;
 		default:
 			return false;
 		}
@@ -450,6 +477,22 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		return resetLabelsObservable;
 	}
 	
+	private boolean repaintPanel;
+	
+	
+	protected void raiseRepaintPanel() {
+		synchronized(StopWatchStateMachine.this) {
+			repaintPanel = true;
+			repaintPanelObservable.next(null);
+		}
+	}
+	
+	private Observable<Void> repaintPanelObservable = new Observable<Void>();
+	
+	public Observable<Void> getRepaintPanel() {
+		return repaintPanelObservable;
+	}
+	
 	/* Entry action for state 'hour printed'. */
 	private void entryAction_main_Region_mode_mode_hour_printed() {
 		timerService.setTimer(this, 0, (1 * 1000), false);
@@ -468,6 +511,11 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	/* Entry action for state 'started'. */
 	private void entryAction_main_Region_stopwatch_r1_Time_is_running_running_time_started() {
 		timerService.setTimer(this, 3, 7, true);
+	}
+	
+	/* Entry action for state 'saver reset'. */
+	private void entryAction_saving_time_save_save_saver_reset() {
+		timerService.setTimer(this, 4, (1 * 1000), false);
 	}
 	
 	/* Exit action for state 'hour printed'. */
@@ -490,6 +538,11 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		timerService.unsetTimer(this, 3);
 	}
 	
+	/* Exit action for state 'saver reset'. */
+	private void exitAction_saving_time_save_save_saver_reset() {
+		timerService.unsetTimer(this, 4);
+	}
+	
 	/* 'default' enter sequence for state mode */
 	private void enterSequence_main_Region_mode_default() {
 		enterSequence_main_Region_mode_mode_default();
@@ -499,6 +552,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	private void enterSequence_main_Region_mode_mode_hour_printed_default() {
 		entryAction_main_Region_mode_mode_hour_printed();
 		stateVector[0] = State.MAIN_REGION_MODE_MODE_HOUR_PRINTED;
+		stateConfVectorPosition = 0;
 		
 		historyVector[0] = stateVector[0];
 	}
@@ -507,6 +561,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	private void enterSequence_main_Region_mode_mode_date_printed_default() {
 		entryAction_main_Region_mode_mode_date_printed();
 		stateVector[0] = State.MAIN_REGION_MODE_MODE_DATE_PRINTED;
+		stateConfVectorPosition = 0;
 		
 		historyVector[0] = stateVector[0];
 	}
@@ -519,6 +574,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	/* 'default' enter sequence for state Initial state */
 	private void enterSequence_main_Region_stopwatch_r1_Initial_state_default() {
 		stateVector[0] = State.MAIN_REGION_STOPWATCH_R1_INITIAL_STATE;
+		stateConfVectorPosition = 0;
 		
 		historyVector[1] = stateVector[0];
 	}
@@ -526,6 +582,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	/* 'default' enter sequence for state stopped */
 	private void enterSequence_main_Region_stopwatch_r1_stopped_default() {
 		stateVector[0] = State.MAIN_REGION_STOPWATCH_R1_STOPPED;
+		stateConfVectorPosition = 0;
 		
 		historyVector[1] = stateVector[0];
 	}
@@ -533,6 +590,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	/* 'default' enter sequence for state paused */
 	private void enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_paused_default() {
 		stateVector[0] = State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_PAUSED;
+		stateConfVectorPosition = 0;
 		
 		historyVector[2] = stateVector[0];
 	}
@@ -541,18 +599,27 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	private void enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_started_default() {
 		entryAction_main_Region_stopwatch_r1_Time_is_running_running_time_started();
 		stateVector[0] = State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED;
+		stateConfVectorPosition = 0;
 		
 		historyVector[2] = stateVector[0];
 	}
 	
 	/* 'default' enter sequence for state save */
-	private void enterSequence_main_Region_save_default() {
-		enterSequence_main_Region_save_save_default();
+	private void enterSequence_saving_time_save_default() {
+		enterSequence_saving_time_save_save_default();
 	}
 	
 	/* 'default' enter sequence for state time saved */
-	private void enterSequence_main_Region_save_save_time_saved_default() {
-		stateVector[0] = State.MAIN_REGION_SAVE_SAVE_TIME_SAVED;
+	private void enterSequence_saving_time_save_save_time_saved_default() {
+		stateVector[1] = State.SAVING_TIME_SAVE_SAVE_TIME_SAVED;
+		stateConfVectorPosition = 1;
+	}
+	
+	/* 'default' enter sequence for state saver reset */
+	private void enterSequence_saving_time_save_save_saver_reset_default() {
+		entryAction_saving_time_save_save_saver_reset();
+		stateVector[1] = State.SAVING_TIME_SAVE_SAVE_SAVER_RESET;
+		stateConfVectorPosition = 1;
 	}
 	
 	/* 'default' enter sequence for region main Region */
@@ -620,9 +687,14 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		}
 	}
 	
+	/* 'default' enter sequence for region saving time */
+	private void enterSequence_saving_time_default() {
+		react_saving_time__entry_Default();
+	}
+	
 	/* 'default' enter sequence for region save */
-	private void enterSequence_main_Region_save_save_default() {
-		react_main_Region_save_save__entry_Default();
+	private void enterSequence_saving_time_save_save_default() {
+		react_saving_time_save_save__entry_Default();
 	}
 	
 	/* Default exit sequence for state mode */
@@ -633,6 +705,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	/* Default exit sequence for state hour printed */
 	private void exitSequence_main_Region_mode_mode_hour_printed() {
 		stateVector[0] = State.$NULLSTATE$;
+		stateConfVectorPosition = 0;
 		
 		exitAction_main_Region_mode_mode_hour_printed();
 	}
@@ -640,6 +713,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	/* Default exit sequence for state date printed */
 	private void exitSequence_main_Region_mode_mode_date_printed() {
 		stateVector[0] = State.$NULLSTATE$;
+		stateConfVectorPosition = 0;
 		
 		exitAction_main_Region_mode_mode_date_printed();
 	}
@@ -652,11 +726,13 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	/* Default exit sequence for state Initial state */
 	private void exitSequence_main_Region_stopwatch_r1_Initial_state() {
 		stateVector[0] = State.$NULLSTATE$;
+		stateConfVectorPosition = 0;
 	}
 	
 	/* Default exit sequence for state stopped */
 	private void exitSequence_main_Region_stopwatch_r1_stopped() {
 		stateVector[0] = State.$NULLSTATE$;
+		stateConfVectorPosition = 0;
 	}
 	
 	/* Default exit sequence for state Time is running */
@@ -668,23 +744,29 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	/* Default exit sequence for state paused */
 	private void exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_paused() {
 		stateVector[0] = State.$NULLSTATE$;
+		stateConfVectorPosition = 0;
 	}
 	
 	/* Default exit sequence for state started */
 	private void exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_started() {
 		stateVector[0] = State.$NULLSTATE$;
+		stateConfVectorPosition = 0;
 		
 		exitAction_main_Region_stopwatch_r1_Time_is_running_running_time_started();
 	}
 	
 	/* Default exit sequence for state time saved */
-	private void exitSequence_main_Region_save_save_time_saved() {
-		stateVector[0] = State.$NULLSTATE$;
+	private void exitSequence_saving_time_save_save_time_saved() {
+		stateVector[1] = State.$NULLSTATE$;
+		stateConfVectorPosition = 1;
 	}
 	
 	/* Default exit sequence for state saver reset */
-	private void exitSequence_main_Region_save_save_saver_reset() {
-		stateVector[0] = State.$NULLSTATE$;
+	private void exitSequence_saving_time_save_save_saver_reset() {
+		stateVector[1] = State.$NULLSTATE$;
+		stateConfVectorPosition = 1;
+		
+		exitAction_saving_time_save_save_saver_reset();
 	}
 	
 	/* Default exit sequence for region main Region */
@@ -709,12 +791,6 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED:
 			exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_started();
 			exitAction_main_Region_stopwatch_r1_Time_is_running();
-			break;
-		case MAIN_REGION_SAVE_SAVE_TIME_SAVED:
-			exitSequence_main_Region_save_save_time_saved();
-			break;
-		case MAIN_REGION_SAVE_SAVE_SAVER_RESET:
-			exitSequence_main_Region_save_save_saver_reset();
 			break;
 		default:
 			break;
@@ -771,6 +847,20 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		}
 	}
 	
+	/* Default exit sequence for region saving time */
+	private void exitSequence_saving_time() {
+		switch (stateVector[1]) {
+		case SAVING_TIME_SAVE_SAVE_TIME_SAVED:
+			exitSequence_saving_time_save_save_time_saved();
+			break;
+		case SAVING_TIME_SAVE_SAVE_SAVER_RESET:
+			exitSequence_saving_time_save_save_saver_reset();
+			break;
+		default:
+			break;
+		}
+	}
+	
 	/* Default react sequence for shallow history entry  */
 	private void react_main_Region_mode_mode__entry_Default() {
 		/* Enter the region with shallow history */
@@ -797,8 +887,13 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	}
 	
 	/* Default react sequence for initial entry  */
-	private void react_main_Region_save_save__entry_Default() {
-		enterSequence_main_Region_save_save_time_saved_default();
+	private void react_saving_time_save_save__entry_Default() {
+		enterSequence_saving_time_save_save_time_saved_default();
+	}
+	
+	/* Default react sequence for initial entry  */
+	private void react_saving_time__entry_Default() {
+		enterSequence_saving_time_save_default();
 	}
 	
 	private long react(long transitioned_before) {
@@ -809,10 +904,6 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		long transitioned_after = transitioned_before;
 		
 		if (transitioned_after<0) {
-		}
-		/* If no transition was taken then execute local reactions */
-		if (transitioned_after==transitioned_before) {
-			transitioned_after = react(transitioned_before);
 		}
 		return transitioned_after;
 	}
@@ -832,18 +923,15 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			} else {
 				if (timeEvents[0]) {
 					exitSequence_main_Region_mode();
-					enterSequence_main_Region_stopwatch_default();
-					react(0);
+					raiseRepaintPanel();
 					
+					enterSequence_main_Region_stopwatch_default();
 					transitioned_after = 0;
 				}
 			}
 		}
 		/* If no transition was taken then execute local reactions */
 		if (transitioned_after==transitioned_before) {
-			if (modeButton) {
-				raisePrintHour();
-			}
 			transitioned_after = main_Region_mode_react(transitioned_before);
 		}
 		return transitioned_after;
@@ -864,9 +952,9 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			} else {
 				if (timeEvents[1]) {
 					exitSequence_main_Region_mode();
-					enterSequence_main_Region_stopwatch_default();
-					react(0);
+					raiseRepaintPanel();
 					
+					enterSequence_main_Region_stopwatch_default();
 					transitioned_after = 0;
 				}
 			}
@@ -884,23 +972,11 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		if (transitioned_after<0) {
 			if (modeButton) {
 				exitSequence_main_Region_stopwatch();
-				enterSequence_main_Region_mode_default();
-				react(0);
+				raisePrintHour();
 				
+				enterSequence_main_Region_mode_default();
 				transitioned_after = 0;
-			} else {
-				if (saveButton) {
-					exitSequence_main_Region_stopwatch();
-					enterSequence_main_Region_save_default();
-					react(0);
-					
-					transitioned_after = 0;
-				}
 			}
-		}
-		/* If no transition was taken then execute local reactions */
-		if (transitioned_after==transitioned_before) {
-			transitioned_after = react(transitioned_before);
 		}
 		return transitioned_after;
 	}
@@ -1019,10 +1095,10 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		return transitioned_after;
 	}
 	
-	private long main_Region_save_react(long transitioned_before) {
+	private long saving_time_save_react(long transitioned_before) {
 		long transitioned_after = transitioned_before;
 		
-		if (transitioned_after<0) {
+		if (transitioned_after<1) {
 		}
 		/* If no transition was taken then execute local reactions */
 		if (transitioned_after==transitioned_before) {
@@ -1031,29 +1107,55 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		return transitioned_after;
 	}
 	
-	private long main_Region_save_save_time_saved_react(long transitioned_before) {
+	private long saving_time_save_save_time_saved_react(long transitioned_before) {
 		long transitioned_after = transitioned_before;
 		
-		if (transitioned_after<0) {
+		if (transitioned_after<1) {
+			if (saveButton) {
+				exitSequence_saving_time_save_save_time_saved();
+				raiseSaveTime();
+				
+				enterSequence_saving_time_save_save_saver_reset_default();
+				saving_time_save_react(1);
+				
+				transitioned_after = 1;
+			}
 		}
 		/* If no transition was taken then execute local reactions */
 		if (transitioned_after==transitioned_before) {
 			if (saveButton) {
 				raiseSaveTime();
 			}
-			transitioned_after = main_Region_save_react(transitioned_before);
+			transitioned_after = saving_time_save_react(transitioned_before);
 		}
 		return transitioned_after;
 	}
 	
-	private long main_Region_save_save_saver_reset_react(long transitioned_before) {
+	private long saving_time_save_save_saver_reset_react(long transitioned_before) {
 		long transitioned_after = transitioned_before;
 		
-		if (transitioned_after<0) {
+		if (transitioned_after<1) {
+			if (saveButton) {
+				exitSequence_saving_time_save_save_saver_reset();
+				raiseResetLabels();
+				
+				enterSequence_saving_time_save_save_time_saved_default();
+				saving_time_save_react(1);
+				
+				transitioned_after = 1;
+			} else {
+				if (timeEvents[4]) {
+					exitSequence_saving_time_save_save_saver_reset();
+					enterSequence_saving_time_save_save_time_saved_default();
+					saving_time_save_react(1);
+					
+					transitioned_after = 1;
+				}
+			}
 		}
 		/* If no transition was taken then execute local reactions */
 		if (transitioned_after==transitioned_before) {
-			transitioned_after = main_Region_save_react(transitioned_before);
+			transitioned_after = saving_time_save_react(transitioned_before);
 		}
 		return transitioned_after;
 	}

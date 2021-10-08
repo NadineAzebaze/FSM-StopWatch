@@ -30,7 +30,7 @@ public class StopWatchGUI extends JFrame  {
 	 */
 	private static final long serialVersionUID = -8682173885223592966L;
 
-	protected int millis, secs, mins;
+	protected int millis, secs, mins, counter;
 	protected JButton leftButton, rightButton, modeButton, saveButton;
 	protected JPanel rootPanel;
 	protected JLabel timeValue, modeValue, saveValue, label1, label2, label3, label4, label5;
@@ -77,31 +77,34 @@ public class StopWatchGUI extends JFrame  {
 	}
 	
 
-	public void saveTime() {
+	protected void saveTime() {
 		// TODO Auto-generated method stub
 		for(int i=0; i<5; i++) {
+			counter++;
 			if(tabLabel[i].getText().isBlank()) {
 				tabLabel[i].setText(timeValue.getText());
+				rootPanel.add(tabLabel[i]);
 				return;
 			}
 		}
-		
 	}
 
-	private void resetLabels() {
+	protected void resetLabels() {
 		// TODO Auto-generated method stub
+		for(int i=0; i<5; i++) {
+			tabLabel[i] = new JLabel();
+			rootPanel.add(tabLabel[i]);
+		}
 	
 		
 	}
 
 	protected void doPrintDate() {
-		rootPanel.add(modeValue);
 		modeButton.setText("time");
 		modeValue.setText(java.time.LocalDate.now().toString());
 	}
 
 	protected void doPrintHour() {
-		rootPanel.add(modeValue);
 		modeButton.setText("date");
 		modeValue.setText(java.time.LocalTime.now().toString());
 	}
@@ -137,6 +140,14 @@ public class StopWatchGUI extends JFrame  {
 		leftButton.setText("start");
 	}
 	
+	public void repaintPanel() {
+		// TODO Auto-generated method stub
+		timeValue.setVisible(true);
+		modeValue.setVisible(false);
+		rootPanel.repaint();
+		
+	}
+	
 	/**
 	 * construct the GUI and initialize the different value. Also initialize the {@link #msTimer}
 	 * @param mn
@@ -147,6 +158,7 @@ public class StopWatchGUI extends JFrame  {
 		mins = mn;
 		secs = se;
 		millis = ct;
+		counter = 0;
 		theFSM = new StopWatchStateMachine(); 
 
 		TimerService timer = new TimerService();
@@ -162,6 +174,7 @@ public class StopWatchGUI extends JFrame  {
 		theFSM.getPrintHour().subscribe(new  MyObserverPrintHour(this));
 		theFSM.getCount().subscribe(new MyObserverCount(this));
 		theFSM.getSaveTime().subscribe(new MyObserverSave(this));
+		theFSM.getRepaintPanel().subscribe(new MyObserverRepaintPanel(this));
 		
 		
 		theFSM.enter();
@@ -174,6 +187,9 @@ public class StopWatchGUI extends JFrame  {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				theFSM.raiseLeftButton();
+				timeValue.setVisible(true);
+				modeValue.setVisible(false);
+				rootPanel.repaint();
 
 			}
 		});
@@ -183,6 +199,10 @@ public class StopWatchGUI extends JFrame  {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				theFSM.raiseRigthButton();
+				timeValue.setVisible(true);
+				modeValue.setVisible(false);
+				rootPanel.repaint();
+				
 				
 			}
 		});
@@ -192,6 +212,9 @@ public class StopWatchGUI extends JFrame  {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				theFSM.raiseModeButton();
+				timeValue.setVisible(false);
+				modeValue.setVisible(true);
+				rootPanel.repaint();
 			}
 		});
 		
@@ -241,7 +264,7 @@ public class StopWatchGUI extends JFrame  {
 
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		getContentPane().add(rootPanel);
-		setSize(230, 150);
+		setSize(400, 250);
 		setResizable(true);
 		setTitle("stopwatch");
 		setVisible(true);
