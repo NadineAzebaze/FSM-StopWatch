@@ -18,7 +18,10 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		MAIN_REGION_STOPWATCH_R1_STOPPED,
 		MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING,
 		MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_PAUSED,
-		MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_RESUMED,
+		MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED,
+		MAIN_REGION_SAVE,
+		MAIN_REGION_SAVE_SAVE_TIME_SAVED,
+		MAIN_REGION_SAVE_SAVE_SAVER_RESET,
 		$NULLSTATE$
 	};
 	
@@ -27,7 +30,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	
 	private ITimerService timerService;
 	
-	private final boolean[] timeEvents = new boolean[5];
+	private final boolean[] timeEvents = new boolean[4];
 	
 	private BlockingQueue<Runnable> inEventQueue = new LinkedBlockingQueue<Runnable>();
 	private boolean isExecuting;
@@ -99,13 +102,13 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 	}
 	private void clearInEvents() {
 		leftButton = false;
-		rightButton = false;
+		rigthButton = false;
 		modeButton = false;
+		saveButton = false;
 		timeEvents[0] = false;
 		timeEvents[1] = false;
 		timeEvents[2] = false;
 		timeEvents[3] = false;
-		timeEvents[4] = false;
 	}
 	
 	private void microStep() {
@@ -125,8 +128,14 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_PAUSED:
 			main_Region_stopwatch_r1_Time_is_running_running_time_paused_react(-1);
 			break;
-		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_RESUMED:
-			main_Region_stopwatch_r1_Time_is_running_running_time_resumed_react(-1);
+		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED:
+			main_Region_stopwatch_r1_Time_is_running_running_time_started_react(-1);
+			break;
+		case MAIN_REGION_SAVE_SAVE_TIME_SAVED:
+			main_Region_save_save_time_saved_react(-1);
+			break;
+		case MAIN_REGION_SAVE_SAVE_SAVER_RESET:
+			main_Region_save_save_saver_reset_react(-1);
 			break;
 		default:
 			break;
@@ -151,7 +160,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			clearInEvents();
 			
 			nextEvent();
-		} while ((((((((leftButton || rightButton) || modeButton) || timeEvents[0]) || timeEvents[1]) || timeEvents[2]) || timeEvents[3]) || timeEvents[4]));
+		} while ((((((((leftButton || rigthButton) || modeButton) || saveButton) || timeEvents[0]) || timeEvents[1]) || timeEvents[2]) || timeEvents[3]));
 		
 		isExecuting = false;
 	}
@@ -177,18 +186,25 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			return stateVector[0] == State.MAIN_REGION_MODE_MODE_DATE_PRINTED;
 		case MAIN_REGION_STOPWATCH:
 			return stateVector[0].ordinal() >= State.
-					MAIN_REGION_STOPWATCH.ordinal()&& stateVector[0].ordinal() <= State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_RESUMED.ordinal();
+					MAIN_REGION_STOPWATCH.ordinal()&& stateVector[0].ordinal() <= State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED.ordinal();
 		case MAIN_REGION_STOPWATCH_R1_INITIAL_STATE:
 			return stateVector[0] == State.MAIN_REGION_STOPWATCH_R1_INITIAL_STATE;
 		case MAIN_REGION_STOPWATCH_R1_STOPPED:
 			return stateVector[0] == State.MAIN_REGION_STOPWATCH_R1_STOPPED;
 		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING:
 			return stateVector[0].ordinal() >= State.
-					MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING.ordinal()&& stateVector[0].ordinal() <= State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_RESUMED.ordinal();
+					MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING.ordinal()&& stateVector[0].ordinal() <= State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED.ordinal();
 		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_PAUSED:
 			return stateVector[0] == State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_PAUSED;
-		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_RESUMED:
-			return stateVector[0] == State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_RESUMED;
+		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED:
+			return stateVector[0] == State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED;
+		case MAIN_REGION_SAVE:
+			return stateVector[0].ordinal() >= State.
+					MAIN_REGION_SAVE.ordinal()&& stateVector[0].ordinal() <= State.MAIN_REGION_SAVE_SAVE_SAVER_RESET.ordinal();
+		case MAIN_REGION_SAVE_SAVE_TIME_SAVED:
+			return stateVector[0] == State.MAIN_REGION_SAVE_SAVE_TIME_SAVED;
+		case MAIN_REGION_SAVE_SAVE_SAVER_RESET:
+			return stateVector[0] == State.MAIN_REGION_SAVE_SAVE_SAVER_RESET;
 		default:
 			return false;
 		}
@@ -222,13 +238,13 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		}
 	}
 	
-	private boolean rightButton;
+	private boolean rigthButton;
 	
 	
-	public void raiseRightButton() {
+	public void raiseRigthButton() {
 		synchronized(StopWatchStateMachine.this) {
 			inEventQueue.add(() -> {
-				rightButton = true;
+				rigthButton = true;
 			});
 			runCycle();
 		}
@@ -241,6 +257,18 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		synchronized(StopWatchStateMachine.this) {
 			inEventQueue.add(() -> {
 				modeButton = true;
+			});
+			runCycle();
+		}
+	}
+	
+	private boolean saveButton;
+	
+	
+	public void raiseSaveButton() {
+		synchronized(StopWatchStateMachine.this) {
+			inEventQueue.add(() -> {
+				saveButton = true;
 			});
 			runCycle();
 		}
@@ -374,75 +402,96 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		return printHourObservable;
 	}
 	
-	private boolean updateTimeValue;
+	private boolean updateDisplay;
 	
 	
-	protected void raiseUpdateTimeValue() {
+	protected void raiseUpdateDisplay() {
 		synchronized(StopWatchStateMachine.this) {
-			updateTimeValue = true;
-			updateTimeValueObservable.next(null);
+			updateDisplay = true;
+			updateDisplayObservable.next(null);
 		}
 	}
 	
-	private Observable<Void> updateTimeValueObservable = new Observable<Void>();
+	private Observable<Void> updateDisplayObservable = new Observable<Void>();
 	
-	public Observable<Void> getUpdateTimeValue() {
-		return updateTimeValueObservable;
+	public Observable<Void> getUpdateDisplay() {
+		return updateDisplayObservable;
 	}
 	
-	/* Entry action for state 'mode'. */
-	private void entryAction_main_Region_mode() {
-		timerService.setTimer(this, 0, 7, true);
+	private boolean saveTime;
+	
+	
+	protected void raiseSaveTime() {
+		synchronized(StopWatchStateMachine.this) {
+			saveTime = true;
+			saveTimeObservable.next(null);
+		}
+	}
+	
+	private Observable<Void> saveTimeObservable = new Observable<Void>();
+	
+	public Observable<Void> getSaveTime() {
+		return saveTimeObservable;
+	}
+	
+	private boolean resetLabels;
+	
+	
+	protected void raiseResetLabels() {
+		synchronized(StopWatchStateMachine.this) {
+			resetLabels = true;
+			resetLabelsObservable.next(null);
+		}
+	}
+	
+	private Observable<Void> resetLabelsObservable = new Observable<Void>();
+	
+	public Observable<Void> getResetLabels() {
+		return resetLabelsObservable;
 	}
 	
 	/* Entry action for state 'hour printed'. */
 	private void entryAction_main_Region_mode_mode_hour_printed() {
-		timerService.setTimer(this, 1, (1 * 1000), false);
+		timerService.setTimer(this, 0, (1 * 1000), false);
 	}
 	
 	/* Entry action for state 'date printed'. */
 	private void entryAction_main_Region_mode_mode_date_printed() {
-		timerService.setTimer(this, 2, (1 * 1000), false);
+		timerService.setTimer(this, 1, (1 * 1000), false);
 	}
 	
 	/* Entry action for state 'Time is running'. */
 	private void entryAction_main_Region_stopwatch_r1_Time_is_running() {
-		timerService.setTimer(this, 3, 7, false);
+		timerService.setTimer(this, 2, 7, true);
 	}
 	
-	/* Entry action for state 'resumed'. */
-	private void entryAction_main_Region_stopwatch_r1_Time_is_running_running_time_resumed() {
-		timerService.setTimer(this, 4, 77, true);
-	}
-	
-	/* Exit action for state 'mode'. */
-	private void exitAction_main_Region_mode() {
-		timerService.unsetTimer(this, 0);
+	/* Entry action for state 'started'. */
+	private void entryAction_main_Region_stopwatch_r1_Time_is_running_running_time_started() {
+		timerService.setTimer(this, 3, 7, true);
 	}
 	
 	/* Exit action for state 'hour printed'. */
 	private void exitAction_main_Region_mode_mode_hour_printed() {
-		timerService.unsetTimer(this, 1);
+		timerService.unsetTimer(this, 0);
 	}
 	
 	/* Exit action for state 'date printed'. */
 	private void exitAction_main_Region_mode_mode_date_printed() {
-		timerService.unsetTimer(this, 2);
+		timerService.unsetTimer(this, 1);
 	}
 	
 	/* Exit action for state 'Time is running'. */
 	private void exitAction_main_Region_stopwatch_r1_Time_is_running() {
-		timerService.unsetTimer(this, 3);
+		timerService.unsetTimer(this, 2);
 	}
 	
-	/* Exit action for state 'resumed'. */
-	private void exitAction_main_Region_stopwatch_r1_Time_is_running_running_time_resumed() {
-		timerService.unsetTimer(this, 4);
+	/* Exit action for state 'started'. */
+	private void exitAction_main_Region_stopwatch_r1_Time_is_running_running_time_started() {
+		timerService.unsetTimer(this, 3);
 	}
 	
 	/* 'default' enter sequence for state mode */
 	private void enterSequence_main_Region_mode_default() {
-		entryAction_main_Region_mode();
 		enterSequence_main_Region_mode_mode_default();
 	}
 	
@@ -481,13 +530,6 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		historyVector[1] = stateVector[0];
 	}
 	
-	/* 'default' enter sequence for state Time is running */
-	private void enterSequence_main_Region_stopwatch_r1_Time_is_running_default() {
-		entryAction_main_Region_stopwatch_r1_Time_is_running();
-		enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_default();
-		historyVector[1] = stateVector[0];
-	}
-	
 	/* 'default' enter sequence for state paused */
 	private void enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_paused_default() {
 		stateVector[0] = State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_PAUSED;
@@ -495,12 +537,22 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		historyVector[2] = stateVector[0];
 	}
 	
-	/* 'default' enter sequence for state resumed */
-	private void enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_resumed_default() {
-		entryAction_main_Region_stopwatch_r1_Time_is_running_running_time_resumed();
-		stateVector[0] = State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_RESUMED;
+	/* 'default' enter sequence for state started */
+	private void enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_started_default() {
+		entryAction_main_Region_stopwatch_r1_Time_is_running_running_time_started();
+		stateVector[0] = State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED;
 		
 		historyVector[2] = stateVector[0];
+	}
+	
+	/* 'default' enter sequence for state save */
+	private void enterSequence_main_Region_save_default() {
+		enterSequence_main_Region_save_save_default();
+	}
+	
+	/* 'default' enter sequence for state time saved */
+	private void enterSequence_main_Region_save_save_time_saved_default() {
+		stateVector[0] = State.MAIN_REGION_SAVE_SAVE_TIME_SAVED;
 	}
 	
 	/* 'default' enter sequence for region main Region */
@@ -545,7 +597,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			entryAction_main_Region_stopwatch_r1_Time_is_running();
 			deepEnterSequence_main_Region_stopwatch_r1_Time_is_running_running_time();
 			break;
-		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_RESUMED:
+		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED:
 			entryAction_main_Region_stopwatch_r1_Time_is_running();
 			deepEnterSequence_main_Region_stopwatch_r1_Time_is_running_running_time();
 			break;
@@ -554,29 +606,28 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		}
 	}
 	
-	/* 'default' enter sequence for region running time */
-	private void enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_default() {
-		react_main_Region_stopwatch_r1_Time_is_running_running_time__entry_Default();
-	}
-	
 	/* deep enterSequence with history in child running time */
 	private void deepEnterSequence_main_Region_stopwatch_r1_Time_is_running_running_time() {
 		switch (historyVector[2]) {
 		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_PAUSED:
 			enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_paused_default();
 			break;
-		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_RESUMED:
-			enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_resumed_default();
+		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED:
+			enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_started_default();
 			break;
 		default:
 			break;
 		}
 	}
 	
+	/* 'default' enter sequence for region save */
+	private void enterSequence_main_Region_save_save_default() {
+		react_main_Region_save_save__entry_Default();
+	}
+	
 	/* Default exit sequence for state mode */
 	private void exitSequence_main_Region_mode() {
 		exitSequence_main_Region_mode_mode();
-		exitAction_main_Region_mode();
 	}
 	
 	/* Default exit sequence for state hour printed */
@@ -619,11 +670,21 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		stateVector[0] = State.$NULLSTATE$;
 	}
 	
-	/* Default exit sequence for state resumed */
-	private void exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_resumed() {
+	/* Default exit sequence for state started */
+	private void exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_started() {
 		stateVector[0] = State.$NULLSTATE$;
 		
-		exitAction_main_Region_stopwatch_r1_Time_is_running_running_time_resumed();
+		exitAction_main_Region_stopwatch_r1_Time_is_running_running_time_started();
+	}
+	
+	/* Default exit sequence for state time saved */
+	private void exitSequence_main_Region_save_save_time_saved() {
+		stateVector[0] = State.$NULLSTATE$;
+	}
+	
+	/* Default exit sequence for state saver reset */
+	private void exitSequence_main_Region_save_save_saver_reset() {
+		stateVector[0] = State.$NULLSTATE$;
 	}
 	
 	/* Default exit sequence for region main Region */
@@ -631,11 +692,9 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		switch (stateVector[0]) {
 		case MAIN_REGION_MODE_MODE_HOUR_PRINTED:
 			exitSequence_main_Region_mode_mode_hour_printed();
-			exitAction_main_Region_mode();
 			break;
 		case MAIN_REGION_MODE_MODE_DATE_PRINTED:
 			exitSequence_main_Region_mode_mode_date_printed();
-			exitAction_main_Region_mode();
 			break;
 		case MAIN_REGION_STOPWATCH_R1_INITIAL_STATE:
 			exitSequence_main_Region_stopwatch_r1_Initial_state();
@@ -647,9 +706,15 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_paused();
 			exitAction_main_Region_stopwatch_r1_Time_is_running();
 			break;
-		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_RESUMED:
-			exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_resumed();
+		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED:
+			exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_started();
 			exitAction_main_Region_stopwatch_r1_Time_is_running();
+			break;
+		case MAIN_REGION_SAVE_SAVE_TIME_SAVED:
+			exitSequence_main_Region_save_save_time_saved();
+			break;
+		case MAIN_REGION_SAVE_SAVE_SAVER_RESET:
+			exitSequence_main_Region_save_save_saver_reset();
 			break;
 		default:
 			break;
@@ -683,8 +748,8 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_paused();
 			exitAction_main_Region_stopwatch_r1_Time_is_running();
 			break;
-		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_RESUMED:
-			exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_resumed();
+		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED:
+			exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_started();
 			exitAction_main_Region_stopwatch_r1_Time_is_running();
 			break;
 		default:
@@ -698,8 +763,8 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_PAUSED:
 			exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_paused();
 			break;
-		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_RESUMED:
-			exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_resumed();
+		case MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED:
+			exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_started();
 			break;
 		default:
 			break;
@@ -726,19 +791,14 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		}
 	}
 	
-	/* Default react sequence for deep history entry  */
-	private void react_main_Region_stopwatch_r1_Time_is_running_running_time__entry_Default() {
-		/* Enter the region with deep history */
-		if (historyVector[2] != State.$NULLSTATE$) {
-			deepEnterSequence_main_Region_stopwatch_r1_Time_is_running_running_time();
-		} else {
-			enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_resumed_default();
-		}
-	}
-	
 	/* Default react sequence for initial entry  */
 	private void react_main_Region__entry_Default() {
 		enterSequence_main_Region_stopwatch_default();
+	}
+	
+	/* Default react sequence for initial entry  */
+	private void react_main_Region_save_save__entry_Default() {
+		enterSequence_main_Region_save_save_time_saved_default();
 	}
 	
 	private long react(long transitioned_before) {
@@ -749,15 +809,6 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		long transitioned_after = transitioned_before;
 		
 		if (transitioned_after<0) {
-			if (timeEvents[0]) {
-				exitSequence_main_Region_mode();
-				raiseCount();
-				
-				enterSequence_main_Region_mode_default();
-				react(0);
-				
-				transitioned_after = 0;
-			}
 		}
 		/* If no transition was taken then execute local reactions */
 		if (transitioned_after==transitioned_before) {
@@ -779,7 +830,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 				
 				transitioned_after = 0;
 			} else {
-				if (timeEvents[1]) {
+				if (timeEvents[0]) {
 					exitSequence_main_Region_mode();
 					enterSequence_main_Region_stopwatch_default();
 					react(0);
@@ -790,6 +841,9 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		}
 		/* If no transition was taken then execute local reactions */
 		if (transitioned_after==transitioned_before) {
+			if (modeButton) {
+				raisePrintHour();
+			}
 			transitioned_after = main_Region_mode_react(transitioned_before);
 		}
 		return transitioned_after;
@@ -808,7 +862,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 				
 				transitioned_after = 0;
 			} else {
-				if (timeEvents[2]) {
+				if (timeEvents[1]) {
 					exitSequence_main_Region_mode();
 					enterSequence_main_Region_stopwatch_default();
 					react(0);
@@ -830,12 +884,18 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		if (transitioned_after<0) {
 			if (modeButton) {
 				exitSequence_main_Region_stopwatch();
-				raisePrintHour();
-				
 				enterSequence_main_Region_mode_default();
 				react(0);
 				
 				transitioned_after = 0;
+			} else {
+				if (saveButton) {
+					exitSequence_main_Region_stopwatch();
+					enterSequence_main_Region_save_default();
+					react(0);
+					
+					transitioned_after = 0;
+				}
 			}
 		}
 		/* If no transition was taken then execute local reactions */
@@ -853,7 +913,10 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 				exitSequence_main_Region_stopwatch_r1_Initial_state();
 				raiseDoStart();
 				
-				enterSequence_main_Region_stopwatch_r1_Time_is_running_default();
+				entryAction_main_Region_stopwatch_r1_Time_is_running();
+				enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_started_default();
+				historyVector[1] = stateVector[0];
+				
 				main_Region_stopwatch_react(0);
 				
 				transitioned_after = 0;
@@ -891,28 +954,21 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		long transitioned_after = transitioned_before;
 		
 		if (transitioned_after<0) {
-			if (timeEvents[3]) {
+			if (leftButton) {
 				exitSequence_main_Region_stopwatch_r1_Time_is_running();
-				raiseCount();
+				raiseDoStop();
 				
-				enterSequence_main_Region_stopwatch_r1_Time_is_running_default();
+				enterSequence_main_Region_stopwatch_r1_stopped_default();
 				main_Region_stopwatch_react(0);
 				
 				transitioned_after = 0;
-			} else {
-				if (leftButton) {
-					exitSequence_main_Region_stopwatch_r1_Time_is_running();
-					raiseDoStop();
-					
-					enterSequence_main_Region_stopwatch_r1_stopped_default();
-					main_Region_stopwatch_react(0);
-					
-					transitioned_after = 0;
-				}
 			}
 		}
 		/* If no transition was taken then execute local reactions */
 		if (transitioned_after==transitioned_before) {
+			if (timeEvents[2]) {
+				raiseCount();
+			}
 			transitioned_after = main_Region_stopwatch_react(transitioned_before);
 		}
 		return transitioned_after;
@@ -922,11 +978,11 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		long transitioned_after = transitioned_before;
 		
 		if (transitioned_after<0) {
-			if (rightButton) {
+			if (rigthButton) {
 				exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_paused();
 				raiseDoResume();
 				
-				enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_resumed_default();
+				enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_started_default();
 				main_Region_stopwatch_r1_Time_is_running_react(0);
 				
 				transitioned_after = 0;
@@ -939,33 +995,65 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		return transitioned_after;
 	}
 	
-	private long main_Region_stopwatch_r1_Time_is_running_running_time_resumed_react(long transitioned_before) {
+	private long main_Region_stopwatch_r1_Time_is_running_running_time_started_react(long transitioned_before) {
 		long transitioned_after = transitioned_before;
 		
 		if (transitioned_after<0) {
-			if (rightButton) {
-				exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_resumed();
+			if (rigthButton) {
+				exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_started();
 				raiseDoPause();
 				
 				enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_paused_default();
 				main_Region_stopwatch_r1_Time_is_running_react(0);
 				
 				transitioned_after = 0;
-			} else {
-				if (timeEvents[4]) {
-					exitSequence_main_Region_stopwatch_r1_Time_is_running_running_time_resumed();
-					raiseUpdateTimeValue();
-					
-					enterSequence_main_Region_stopwatch_r1_Time_is_running_running_time_resumed_default();
-					main_Region_stopwatch_r1_Time_is_running_react(0);
-					
-					transitioned_after = 0;
-				}
 			}
 		}
 		/* If no transition was taken then execute local reactions */
 		if (transitioned_after==transitioned_before) {
+			if (timeEvents[3]) {
+				raiseUpdateDisplay();
+			}
 			transitioned_after = main_Region_stopwatch_r1_Time_is_running_react(transitioned_before);
+		}
+		return transitioned_after;
+	}
+	
+	private long main_Region_save_react(long transitioned_before) {
+		long transitioned_after = transitioned_before;
+		
+		if (transitioned_after<0) {
+		}
+		/* If no transition was taken then execute local reactions */
+		if (transitioned_after==transitioned_before) {
+			transitioned_after = react(transitioned_before);
+		}
+		return transitioned_after;
+	}
+	
+	private long main_Region_save_save_time_saved_react(long transitioned_before) {
+		long transitioned_after = transitioned_before;
+		
+		if (transitioned_after<0) {
+		}
+		/* If no transition was taken then execute local reactions */
+		if (transitioned_after==transitioned_before) {
+			if (saveButton) {
+				raiseSaveTime();
+			}
+			transitioned_after = main_Region_save_react(transitioned_before);
+		}
+		return transitioned_after;
+	}
+	
+	private long main_Region_save_save_saver_reset_react(long transitioned_before) {
+		long transitioned_after = transitioned_before;
+		
+		if (transitioned_after<0) {
+		}
+		/* If no transition was taken then execute local reactions */
+		if (transitioned_after==transitioned_before) {
+			transitioned_after = main_Region_save_react(transitioned_before);
 		}
 		return transitioned_after;
 	}
