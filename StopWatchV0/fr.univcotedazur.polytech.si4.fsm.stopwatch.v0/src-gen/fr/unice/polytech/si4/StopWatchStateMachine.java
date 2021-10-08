@@ -22,6 +22,7 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		SAVING_TIME_SAVE,
 		SAVING_TIME_SAVE_SAVE_TIME_SAVED,
 		SAVING_TIME_SAVE_SAVE_SAVER_RESET,
+		SAVING_TIME_SAVE_SAVE_SAVE_NEXT,
 		$NULLSTATE$
 	};
 	
@@ -163,6 +164,9 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			case SAVING_TIME_SAVE_SAVE_SAVER_RESET:
 				transitioned = saving_time_save_save_saver_reset_react(transitioned);
 				break;
+			case SAVING_TIME_SAVE_SAVE_SAVE_NEXT:
+				transitioned = saving_time_save_save_save_next_react(transitioned);
+				break;
 			default:
 				break;
 			}
@@ -227,11 +231,13 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			return stateVector[0] == State.MAIN_REGION_STOPWATCH_R1_TIME_IS_RUNNING_RUNNING_TIME_STARTED;
 		case SAVING_TIME_SAVE:
 			return stateVector[1].ordinal() >= State.
-					SAVING_TIME_SAVE.ordinal()&& stateVector[1].ordinal() <= State.SAVING_TIME_SAVE_SAVE_SAVER_RESET.ordinal();
+					SAVING_TIME_SAVE.ordinal()&& stateVector[1].ordinal() <= State.SAVING_TIME_SAVE_SAVE_SAVE_NEXT.ordinal();
 		case SAVING_TIME_SAVE_SAVE_TIME_SAVED:
 			return stateVector[1] == State.SAVING_TIME_SAVE_SAVE_TIME_SAVED;
 		case SAVING_TIME_SAVE_SAVE_SAVER_RESET:
 			return stateVector[1] == State.SAVING_TIME_SAVE_SAVE_SAVER_RESET;
+		case SAVING_TIME_SAVE_SAVE_SAVE_NEXT:
+			return stateVector[1] == State.SAVING_TIME_SAVE_SAVE_SAVE_NEXT;
 		default:
 			return false;
 		}
@@ -622,6 +628,12 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		stateConfVectorPosition = 1;
 	}
 	
+	/* 'default' enter sequence for state save next */
+	private void enterSequence_saving_time_save_save_save_next_default() {
+		stateVector[1] = State.SAVING_TIME_SAVE_SAVE_SAVE_NEXT;
+		stateConfVectorPosition = 1;
+	}
+	
 	/* 'default' enter sequence for region main Region */
 	private void enterSequence_main_Region_default() {
 		react_main_Region__entry_Default();
@@ -769,6 +781,12 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		exitAction_saving_time_save_save_saver_reset();
 	}
 	
+	/* Default exit sequence for state save next */
+	private void exitSequence_saving_time_save_save_save_next() {
+		stateVector[1] = State.$NULLSTATE$;
+		stateConfVectorPosition = 1;
+	}
+	
 	/* Default exit sequence for region main Region */
 	private void exitSequence_main_Region() {
 		switch (stateVector[0]) {
@@ -856,6 +874,9 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		case SAVING_TIME_SAVE_SAVE_SAVER_RESET:
 			exitSequence_saving_time_save_save_saver_reset();
 			break;
+		case SAVING_TIME_SAVE_SAVE_SAVE_NEXT:
+			exitSequence_saving_time_save_save_save_next();
+			break;
 		default:
 			break;
 		}
@@ -932,6 +953,9 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 		}
 		/* If no transition was taken then execute local reactions */
 		if (transitioned_after==transitioned_before) {
+			if (modeButton) {
+				raisePrintHour();
+			}
 			transitioned_after = main_Region_mode_react(transitioned_before);
 		}
 		return transitioned_after;
@@ -1146,11 +1170,32 @@ public class StopWatchStateMachine implements IStatemachine, ITimed {
 			} else {
 				if (timeEvents[4]) {
 					exitSequence_saving_time_save_save_saver_reset();
-					enterSequence_saving_time_save_save_time_saved_default();
+					enterSequence_saving_time_save_save_save_next_default();
 					saving_time_save_react(1);
 					
 					transitioned_after = 1;
 				}
+			}
+		}
+		/* If no transition was taken then execute local reactions */
+		if (transitioned_after==transitioned_before) {
+			transitioned_after = saving_time_save_react(transitioned_before);
+		}
+		return transitioned_after;
+	}
+	
+	private long saving_time_save_save_save_next_react(long transitioned_before) {
+		long transitioned_after = transitioned_before;
+		
+		if (transitioned_after<1) {
+			if (saveButton) {
+				exitSequence_saving_time_save_save_save_next();
+				raiseSaveTime();
+				
+				enterSequence_saving_time_save_save_time_saved_default();
+				saving_time_save_react(1);
+				
+				transitioned_after = 1;
 			}
 		}
 		/* If no transition was taken then execute local reactions */

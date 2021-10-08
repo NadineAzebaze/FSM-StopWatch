@@ -5,6 +5,7 @@ import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -83,6 +84,7 @@ public class StopWatchGUI extends JFrame  {
 			counter++;
 			if(tabLabel[i].getText().isBlank()) {
 				tabLabel[i].setText(timeValue.getText());
+				rootPanel.setLayout(new BoxLayout(rootPanel, BoxLayout.Y_AXIS));
 				rootPanel.add(tabLabel[i]);
 				return;
 			}
@@ -92,8 +94,8 @@ public class StopWatchGUI extends JFrame  {
 	protected void resetLabels() {
 		// TODO Auto-generated method stub
 		for(int i=0; i<5; i++) {
-			tabLabel[i] = new JLabel();
-			rootPanel.add(tabLabel[i]);
+			tabLabel[i].setText("");//x = new JLabel();
+			//rootPanel.add(tabLabel[i]);
 		}
 	
 		
@@ -175,6 +177,7 @@ public class StopWatchGUI extends JFrame  {
 		theFSM.getCount().subscribe(new MyObserverCount(this));
 		theFSM.getSaveTime().subscribe(new MyObserverSave(this));
 		theFSM.getRepaintPanel().subscribe(new MyObserverRepaintPanel(this));
+		theFSM.getResetLabels().subscribe(new MyObserverResetLabels(this));
 		
 		
 		theFSM.enter();
@@ -264,7 +267,7 @@ public class StopWatchGUI extends JFrame  {
 
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		getContentPane().add(rootPanel);
-		setSize(400, 250);
+		setSize(400, 300);
 		setResizable(true);
 		setTitle("stopwatch");
 		setVisible(true);
