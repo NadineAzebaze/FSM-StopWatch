@@ -4,6 +4,9 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -18,6 +21,17 @@ import javax.swing.Timer;
  *
  */
 public class StopWatchGUI extends JFrame {
+	/**
+	 * my implementations
+	 */
+	enum State { STARTED, STOPPED,PAUSED,  RESUMED, RESET }
+    enum Event {LeftButton, RightButton}
+
+    private int nbrState = 5;
+    private int nbrEvent = 2;
+    private State currentState = State.RESET ;
+
+    List<ArrayList<Method>> FSM = new ArrayList<ArrayList<Method>>(5);
 
 	/**
 	 * 
@@ -55,19 +69,71 @@ public class StopWatchGUI extends JFrame {
 				+ (((millis / 10) == 0) ? "00" : (((millis / 100) == 0) ? "0" : "")) + millis);
 		repaint();
 	}
+	
+	public void idle(){}
 
-	protected void doStart() {
+	protected void start() {
+		System.out.println("etered");
 		msTimer.start();
 		updateTimeValue();
 		leftButton.setText("stop");
 	}
-
-	protected void doStop() {
+	protected void stop() {
+		System.out.println("etered");
 		msTimer.stop();
 		updateTimeValue();
 		leftButton.setText("start");
 	}
-
+    protected void pause(){
+    	rightButton.setText("resume");
+    }
+    protected void reset(){
+		mins=millis=secs=0;
+		leftButton.setText("start");
+	}
+    protected void resume(){
+    	rightButton.setText("pause");
+    }
+    
+    
+    public void fireReset(){
+        reset();
+        currentState = State.STARTED;
+    }
+    public void fireStartLeftButton(){
+        start();
+        currentState = State.STOPPED;
+    }
+    public void fireStartRightButton(){
+        start();
+        currentState = State.PAUSED;
+    }
+    public void fireStop(){
+        stop();
+        currentState = State.RESET;
+    }
+    public void firePauseLeftButton(){
+        pause();
+        currentState = State.STOPPED;
+    }
+    public void firePauseRightButton(){
+        pause();
+        currentState = State.RESUMED;
+    }
+    public void fireResumeLeftButton(){
+        resume();
+        currentState = State.STOPPED;
+    }
+    public void fireResumeRightButton(){
+        resume();
+        currentState = State.PAUSED;
+    }
+    
+  //Launching
+    void activation(Event newEvent){
+       ArrayList<Method> myLine = FSM.get(currentState.ordinal());
+       myLine.get(newEvent.ordinal());
+    }
 	
 	/**
 	 * construct the GUI and initialize the different value. Also initialize the {@link #msTimer}
@@ -76,9 +142,48 @@ public class StopWatchGUI extends JFrame {
 	 * @param ct
 	 */
 	public StopWatchGUI(int mn, int se, int ct) {
+		/**
+		 * my implementations
+		 */
+		
+		List<ArrayList<Method>> FSM = new ArrayList<ArrayList<Method>>(5);
+	        try {
+	            //row0
+	            ArrayList<Method> row0= new ArrayList<>(2);
+	            row0.add( this.getClass().getMethod("fireStartLeftButton"));
+	            row0.add(this.getClass().getMethod("fireStartRightButton"));
+	            //row1
+	            ArrayList<Method> row1= new ArrayList<>(2);
+	            row1.add(this.getClass().getMethod("fireStop"));
+	            row1.add(this.getClass().getMethod("idle"));
+	            //row2
+	            ArrayList<Method> row2= new ArrayList<>(2);
+	            row2.add(this.getClass().getMethod("firePauseLeftButton"));
+	            row2.add(this.getClass().getMethod("firePauseRightButton"));
+	            //row3
+	            ArrayList<Method> row3= new ArrayList<>(2);
+	            row3.add(this.getClass().getMethod("fireResumeLeftButton"));
+	            row3.add(this.getClass().getMethod("fireResumeRightButton"));
+	            //row4
+	            ArrayList<Method> row4= new ArrayList<>(2);
+	            row4.add(this.getClass().getMethod("fireReset"));
+	            row4.add(this.getClass().getMethod("idle"));
+
+	            FSM.add(row0);
+	            FSM.add(row1);
+	            FSM.add(row2);
+	            FSM.add(row3);
+	            FSM.add(row4);
+	            
+	        } catch (NoSuchMethodException e) {
+	            e.printStackTrace();
+	        }
+	        
 		mins = mn;
 		secs = se;
 		millis = ct;
+		 System.out.println(FSM.size());
+		State currentState = State.RESET;
 
 		// graphics init and listener settings
 		rootPanel = new JPanel();
@@ -86,7 +191,7 @@ public class StopWatchGUI extends JFrame {
 		leftButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				doStart();
+				activation(Event.RightButton);
 			}
 		});
 
@@ -94,7 +199,7 @@ public class StopWatchGUI extends JFrame {
 		rightButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				doStop();
+				activation(Event.LeftButton);
 			}
 		});
 
@@ -124,10 +229,12 @@ public class StopWatchGUI extends JFrame {
 		setResizable(true);
 		setTitle("stopwatch");
 		setVisible(true);
+		
 
 	}
 
 	public static void main(String args[]) {
-		new StopWatchGUI(0, 0, 0);
+		StopWatchGUI watch = new StopWatchGUI(0, 0, 0);
+		
 	}
 }
